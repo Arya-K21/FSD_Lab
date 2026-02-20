@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Experiment 3 – Form Validation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg1: #0d0d1a;
+      --bg2: #111128;
+      --glass: rgba(255,255,255,0.04);
+      --glass-border: rgba(255,255,255,0.10);
+      --accent: #7c6ff7;
+      --accent2: #a78bfa;
+      --success: #34d399;
+      --error: #f87171;
+      --warn: #fbbf24;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --input-bg: rgba(255,255,255,0.05);
+      --input-border: rgba(255,255,255,0.12);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg1);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 16px;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated background blobs ── */
+    body::before, body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.18;
+      pointer-events: none;
+      z-index: 0;
+      animation: blobFloat 8s ease-in-out infinite alternate;
+    }
+    body::before {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, #7c6ff7, transparent);
+      top: -100px; left: -100px;
+    }
+    body::after {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, #06b6d4, transparent);
+      bottom: -80px; right: -80px;
+      animation-delay: 3s;
+    }
+    @keyframes blobFloat {
+      from { transform: scale(1) translate(0,0); }
+      to   { transform: scale(1.15) translate(30px, 20px); }
+    }
+
+    /* ── Card ── */
+    .card {
+      position: relative;
+      z-index: 1;
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      padding: 44px 40px 36px;
+      width: 100%;
+      max-width: 500px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+      animation: cardIn 0.6s cubic-bezier(0.22,1,0.36,1) both;
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(30px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ── Header ── */
+    .card-header { text-align: center; margin-bottom: 36px; }
+    .badge {
+      display: inline-block;
+      background: rgba(124,111,247,0.18);
+      border: 1px solid rgba(124,111,247,0.35);
+      color: var(--accent2);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 20px;
+      margin-bottom: 14px;
+    }
+    h2 {
+      font-size: 1.9rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+    .subtitle { color: var(--muted); font-size: 0.88rem; }
+
+
+
+    /* ── Floating label inputs ── */
+    .form-group {
+      position: relative;
+      margin-bottom: 22px;
+    }
+    .form-group label {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 0.9rem;
+      pointer-events: none;
+      transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+      background: transparent;
+      padding: 0 4px;
+    }
+    /* Select label always stays floated up — select always shows a value */
+    .form-group.select-group label {
+      top: 0;
+      transform: none;
+      font-size: 0.73rem;
+      color: var(--accent2);
+      background: var(--bg1);
+      font-weight: 500;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 15px 44px 15px 14px;
+      border-radius: 10px;
+      border: 1.5px solid var(--input-border);
+      background: var(--input-bg);
+      color: var(--text);
+      font-size: 0.93rem;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+    }
+    /* Add top padding to select so text doesn't sit under the floated label */
+    .form-group select { cursor: pointer; padding-top: 20px; padding-bottom: 10px; }
+    .form-group select option { background: #1a1a2e; }
+
+    /* Float the label up when input has value or is focused */
+    .form-group input:focus ~ label,
+    .form-group input:not(:placeholder-shown) ~ label {
+      top: 0;
+      font-size: 0.73rem;
+      color: var(--accent2);
+      background: var(--bg1);
+      font-weight: 500;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: var(--accent);
+      background: rgba(124,111,247,0.06);
+      box-shadow: 0 0 0 3px rgba(124,111,247,0.12);
+    }
+    .form-group input.invalid { border-color: var(--error) !important; box-shadow: 0 0 0 3px rgba(248,113,113,0.12); }
+    .form-group input.valid   { border-color: var(--success) !important; box-shadow: 0 0 0 3px rgba(52,211,153,0.10); }
+    .form-group select.invalid { border-color: var(--error) !important; }
+    .form-group select.valid   { border-color: var(--success) !important; }
+
+    /* Status icon inside input */
+    .status-icon {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1rem;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+    .form-group.select-group .status-icon { top: 50%; transform: translateY(-50%); }
+    .form-group input.valid  ~ .status-icon,
+    .form-group select.valid ~ .status-icon { opacity: 1; }
+    .form-group input.invalid ~ .status-icon,
+    .form-group select.invalid ~ .status-icon { opacity: 1; }
+
+    /* Error message */
+    .error-msg {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--error);
+      font-size: 0.78rem;
+      margin-top: 6px;
+      padding-left: 2px;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height 0.3s ease, opacity 0.3s ease;
+    }
+    .error-msg.visible {
+      max-height: 40px;
+      opacity: 1;
+    }
+
+    /* ── Password strength bar ── */
+    .strength-bar-wrap {
+      margin-top: 8px;
+      display: none;
+    }
+    .strength-bar-wrap.show { display: block; }
+    .strength-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.73rem;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+    .strength-label span:last-child { font-weight: 600; }
+    .strength-track {
+      height: 4px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .strength-fill {
+      height: 100%;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.4s ease, background 0.4s ease;
+    }
+
+    /* ── Eye toggle button ── */
+    .eye-btn {
+      position: absolute;
+      right: 38px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+      z-index: 2;
+    }
+    .eye-btn:hover { color: var(--accent2); }
+    .eye-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ── Two columns ── */
+    .row { display: flex; gap: 16px; }
+    .row .form-group { flex: 1; }
+
+    /* ── Submit button ── */
+    .submit-btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #7c6ff7, #a78bfa);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      margin-top: 6px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+      box-shadow: 0 8px 24px rgba(124,111,247,0.35);
+    }
+    .submit-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(124,111,247,0.45); }
+    .submit-btn:hover::before { opacity: 1; }
+    .submit-btn:active { transform: translateY(0); }
+
+    /* Ripple effect */
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      transform: scale(0);
+      animation: ripple 0.6s linear;
+      pointer-events: none;
+    }
+    @keyframes ripple {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    /* ── Success banner ── */
+    #successMsg {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      background: rgba(52,211,153,0.12);
+      border: 1px solid rgba(52,211,153,0.35);
+      color: var(--success);
+      padding: 14px 18px;
+      border-radius: 10px;
+      margin-top: 18px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      animation: fadeSlideUp 0.4s ease both;
+    }
+    #successMsg.show { display: flex; }
+    @keyframes fadeSlideUp {
+      from { opacity:0; transform: translateY(10px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    .success-icon { font-size: 1.4rem; }
+
+    /* ── Shake animation for invalid submit ── */
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%,60%  { transform: translateX(-6px); }
+      40%,80%  { transform: translateX(6px); }
+    }
+    .shake { animation: shake 0.4s ease; }
+
+    /* ── Divider ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 6px 0 22px;
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--glass-border);
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <!-- Header -->
+  <div class="card-header">
+    <div class="badge">Experiment 3</div>
+    <h2>Create Account</h2>
+    <p class="subtitle">Fill in the details below — all fields are required</p>
+  </div>
+
+
+
+  <form id="regForm" novalidate autocomplete="off">
+
+    <div class="divider">Personal Info</div>
+
+    <!-- Full Name -->
+    <div class="form-group" id="grp-fullName">
+      <input type="text" id="fullName" placeholder=" " />
+      <label for="fullName">Full Name</label>
+      <span class="status-icon" id="si-fullName"></span>
+      <div class="error-msg" id="nameError">⚠ Name must be at least 3 characters (letters only).</div>
+    </div>
+
+    <!-- Email -->
+    <div class="form-group" id="grp-email">
+      <input type="email" id="email" placeholder=" " />
+      <label for="email">Email Address</label>
+      <span class="status-icon" id="si-email"></span>
+      <div class="error-msg" id="emailError">⚠ Enter a valid email (e.g. user@domain.com).</div>
+    </div>
+
+    <!-- Mobile + Age in a row -->
+    <div class="row">
+      <div class="form-group" id="grp-mobile">
+        <input type="text" id="mobile" placeholder=" " maxlength="10" />
+        <label for="mobile">Mobile Number</label>
+        <span class="status-icon" id="si-mobile"></span>
+        <div class="error-msg" id="mobileError">⚠ Enter a valid 10-digit number.</div>
+      </div>
+
+      <div class="form-group" id="grp-age">
+        <input type="number" id="age" placeholder=" " />
+        <label for="age">Age</label>
+        <span class="status-icon" id="si-age"></span>
+        <div class="error-msg" id="ageError">⚠ Age must be 18–100.</div>
+      </div>
+    </div>
+
+    <!-- Gender -->
+    <div class="form-group select-group" id="grp-gender">
+      <select id="gender">
+        <option value="">Select Gender</option>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+        <option value="other">Other</option>
+      </select>
+      <label for="gender">Gender</label>
+      <span class="status-icon" id="si-gender"></span>
+      <div class="error-msg" id="genderError">⚠ Please select a gender.</div>
+    </div>
+
+    <div class="divider">Security</div>
+
+    <!-- Password -->
+    <div class="form-group" id="grp-password">
+      <input type="password" id="password" placeholder=" " />
+      <label for="password">Password</label>
+      <button type="button" class="eye-btn" id="eyeBtn" aria-label="Toggle password visibility" onclick="togglePassword('password','eyeBtn')">
+        <!-- Eye open icon -->
+        <svg id="eyeBtn-icon" viewBox="0 0 24 24">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
+      <span class="status-icon" id="si-password"></span>
+      <div class="error-msg" id="passwordError">⚠ Min 8 chars with at least 1 number &amp; 1 special character.</div>
+      <!-- Strength meter -->
+      <div class="strength-bar-wrap" id="strengthWrap">
+        <div class="strength-label">
+          <span>Password Strength</span>
+          <span id="strengthLabel">—</span>
+        </div>
+        <div class="strength-track">
+          <div class="strength-fill" id="strengthFill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm Password -->
+    <div class="form-group" id="grp-confirmPassword">
+      <input type="password" id="confirmPassword" placeholder=" " />
+      <label for="confirmPassword">Confirm Password</label>
+      <button type="button" class="eye-btn" id="eyeBtn2" aria-label="Toggle confirm password visibility" onclick="togglePassword('confirmPassword','eyeBtn2')">
+        <svg id="eyeBtn2-icon" viewBox="0 0 24 24">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
+      <span class="status-icon" id="si-confirmPassword"></span>
+      <div class="error-msg" id="confirmPasswordError">⚠ Passwords do not match.</div>
+    </div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">
+      Create Account →
+    </button>
+  </form>
+
+  <div id="successMsg">
+    <span class="success-icon">🎉</span>
+    <div>
+      <strong>Registration Successful!</strong><br>
+      <span style="font-weight:400; font-size:0.82rem; opacity:0.85;">All validations passed. Form submitted successfully.</span>
+    </div>
+  </div>
+</div>
+
+<script src="3.js"></script>
+</body>
+</html>
