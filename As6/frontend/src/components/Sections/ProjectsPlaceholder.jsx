@@ -2,56 +2,10 @@ import React, { useState, useEffect } from 'react';
 import styles from './Projects.module.css';
 
 /* ── Helpers ─────────────────────────────────────────────── */
-const STORAGE_KEY = 'portfolio_projects';
-
-const DEFAULTS = [
-  {
-    id: '1',
-    title: 'Weather Prediction App',
-    description:
-      'A machine-learning powered web app that predicts weather using a FastAPI backend with a React frontend. Integrates with a Random Forest model for real-time classification.',
-    tags: ['React', 'FastAPI', 'Python', 'ML'],
-    github: 'https://github.com',
-    live: '',
-    color: '#00f5d4',
-  },
-  {
-    id: '2',
-    title: 'Meal Prep PWA',
-    description:
-      'A Progressive Web App for managing weekly meal plans, macro tracking, and grocery lists. Features JWT auth, per-user data isolation, and offline support.',
-    tags: ['React', 'Node.js', 'MongoDB', 'PWA'],
-    github: 'https://github.com',
-    live: '',
-    color: '#bf5af2',
-  },
-  {
-    id: '3',
-    title: 'Student Portal MERN',
-    description:
-      'Full-stack student data management system with CRUD operations, form validation, and admin panel. Built with Express REST API and MongoDB Atlas.',
-    tags: ['MongoDB', 'Express', 'React', 'Node.js'],
-    github: 'https://github.com',
-    live: '',
-    color: '#0a84ff',
-  },
-];
+const API_URL = 'http://localhost:5000/api/projects';
 
 const TAG_COLORS = ['#00f5d4', '#bf5af2', '#0a84ff', '#ff9f0a', '#ff375f'];
 const PRESET_TAGS = ['React', 'Node.js', 'MongoDB', 'Express', 'JavaScript', 'Python', 'REST API', 'HTML/CSS'];
-
-const getProjects = () => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : DEFAULTS;
-  } catch {
-    return DEFAULTS;
-  }
-};
-
-const saveProjects = (projects) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-};
 
 const CARD_COLORS = ['#00f5d4', '#bf5af2', '#0a84ff', '#ff9f0a', '#ff375f', '#34d399'];
 
@@ -269,33 +223,66 @@ const Projects = () => {
   const [confirmDelete, setConfirmDelete] = useState(null); // project | null
   const [toast, setToast] = useState(null); // { msg, type }
 
-  useEffect(() => { setProjects(getProjects()); }, []);
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      setProjects(data);
+    } catch (error) {
+      console.error('Failed to fetch projects:', error);
+      showToast('Failed to load projects', 'error');
+    }
+  };
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleSave = (form) => {
-    let updated;
-    if (modal.mode === 'add') {
-      updated = [...projects, form];
-      showToast('Project added successfully! 🎉');
-    } else {
-      updated = projects.map((p) => (p.id === form.id ? form : p));
-      showToast('Project updated! ✓');
+  const handleSave = async (form) => {
+    try {
+      if (modal.mode === 'add') {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form)
+        });
+        const newProject = await res.json();
+        setProjects([...projects, newProject]);
+        showToast('Project added successfully! 🎉');
+      } else {
+        const res = await fetch(`${API_URL}/${form.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form)
+        });
+        const updatedProject = await res.json();
+        setProjects(projects.map((p) => (p.id === updatedProject.id ? updatedProject : p)));
+        showToast('Project updated! ✓');
+      }
+      setModal(null);
+    } catch (error) {
+      console.error('Failed to save project:', error);
+      showToast('Error saving project', 'error');
     }
-    setProjects(updated);
-    saveProjects(updated);
-    setModal(null);
   };
 
-  const handleDelete = () => {
-    const updated = projects.filter((p) => p.id !== confirmDelete.id);
-    setProjects(updated);
-    saveProjects(updated);
-    setConfirmDelete(null);
-    showToast('Project deleted.', 'error');
+  const handleDelete = async () => {
+    try {
+      await fetch(`${API_URL}/${confirmDelete.id}`, {
+        method: 'DELETE'
+      });
+      setProjects(projects.filter((p) => p.id !== confirmDelete.id));
+      setConfirmDelete(null);
+      showToast('Project deleted.', 'error');
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      showToast('Error deleting project', 'error');
+    }
   };
 
   return (
